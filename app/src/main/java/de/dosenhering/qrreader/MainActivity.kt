@@ -1,7 +1,6 @@
 package de.dosenhering.qrreader
 
 import android.content.*
-import android.content.pm.PackageManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -19,6 +18,9 @@ import kotlinx.android.synthetic.main.activity_main.*
 class MainActivity : AppCompatActivity() {
 
     companion object {
+        public const val HYPERLINK_PATTERN : String = "^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#@!\\$&'\\(\\)\\*\\+,;=.]+$";
+        public const val WIFI_PATTERN : String = "^WIFI:S:(.*?);T:(\\w+)?;P:([\\w\\W]+)?;(\\w+)?;$";
+
         /**
          * Checks if the currently installed API-Level is greater or equal to 23 (Marshmallow - 6.0)
          */
@@ -42,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private var dialogBuilder: DialogBuilder? = null;
     private var qrCodeHandler: QRCodeHandler? = null;
 
+    private var lastScanText: String? = null;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,30 +53,21 @@ class MainActivity : AppCompatActivity() {
         this.overlayRoot = this.findViewById(R.id.overlayRoot);
         this.qrCodeText = this.findViewById(R.id.qrCodeText);
 
-        this.permissionHandler = PermissionHandler(this, 1);
-        this.dialogBuilder = DialogBuilder(this.applicationContext);
+        this.permissionHandler = PermissionHandler(this, 1001);
+        this.dialogBuilder = DialogBuilder(this.applicationContext, this);
         this.qrCodeHandler = QRCodeHandler(this, this.dialogBuilder!!);
         this.qrCodeResultHandler = QRCodeResultHandler(this, this.dialogBuilder!!);
 
         this.qrCodeResultHandler!!.startCamera();
 
-        if(MainActivity.isMarshmallowOrGreater()) {
-            if(!this.hasCameraPermission()) {
-                this.requestCameraPermission();
-            }
+        if(MainActivity.isMarshmallowOrGreater() && !this.permissionHandler!!.hasCameraPermission()) {
+            this.permissionHandler!!.requestCameraPermission();
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if(this.permissionHandler!!.isAppPermissionRequest(requestCode)) {
-            if(grantResults.isEmpty()) {
-                this.dialogBuilder!!.showAlert("Camera access could not be granted.");
-            } else if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                this.dialogBuilder!!.showAlert("Camera access was successfully granted.");
-                if(MainActivity.isMarshmallowOrGreater() && this.shouldShowRequestPermissionRationale(android.Manifest.permission.CAMERA)) {
-                    this.dialogBuilder!!.showOkCancelMessage("Please grant access to your phones camera.", PermissionGrantOkListener(this.qrCodeResultHandler!!, this.permissionHandler!!));
-                }
-            }
+            this.permissionHandler!!.handlePermissionRequestResult(permissions, grantResults, this.dialogBuilder!!, this.qrCodeResultHandler!!);
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
@@ -81,13 +75,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume();
-        if(MainActivity.isMarshmallowOrGreater()) {
-            if (!this.hasCameraPermission()) {
-                this.requestCameraPermission();
-            }
+        if (this.permissionHandler!!.hasCameraPermission()) {
             this.qrCodeResultHandler!!.startCamera();
-            this.hideOverlay();
         }
+        this.hideOverlay();
     }
 
     override fun onPause() {
@@ -109,28 +100,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     public fun onOpenLinkClicked(view: View) {
-        this.qrCodeHandler!!.openInDefaultBrowser(this.qrCodeText!!.text.toString());
+        this.qrCodeHandler!!.openInDefaultBrowser(this.qrCodeResultHandler!!.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onCopyClicked(view: View) {
-        this.qrCodeHandler!!.copyToClipboard(this.qrCodeText!!.text);
+        this.qrCodeHandler!!.copyToClipboard(this.qrCodeResultHandler!!.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onShareClicked(view: View) {
-        this.qrCodeHandler!!.shareWithOtherApps(this.qrCodeText!!.text.toString());
+        this.qrCodeHandler!!.shareWithOtherApps(this.qrCodeResultHandler!!.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onSearchClicked(view: View) {
-        this.qrCodeHandler!!.searchInDefaultBrowser(this.qrCodeText!!.text.toString());
+        this.qrCodeHandler!!.searchInDefaultBrowser(this.qrCodeResultHandler!!.lastScanResult!!);
+        this.onDismissClicked(view);
+    }
+
+    public fun onConnectWifiClick(view: View) {
+        this.qrCodeHandler!!.connectWifi(this.qrCodeResultHandler!!.lastScanResult!!, this.permissionHandler!!);
         this.onDismissClicked(view);
     }
 
     public fun onDismissClicked(view: View) {
         this.hideOverlay();
         this.qrCodeResultHandler!!.resumeCamera();
+        this.lastScanText = null;
     }
 
 
@@ -139,12 +136,16 @@ class MainActivity : AppCompatActivity() {
      * @param qrCodeText text to be displayed in the text display TextView
      */
     public fun showOverlay(qrCodeText: String) {
+        val isWifiAccessKey : Boolean = this.isWifiAccessKey(qrCodeText);
+        val isHyperlink : Boolean = this.isHyperlink(qrCodeText);
+
         this.overlayRoot!!.visibility = View.VISIBLE;
         this.overlayRoot!!.bringToFront();
 
-        this.qrCodeText?.text = qrCodeText;
+        this.qrCodeText?.text = if(this.isWifiAccessKey(qrCodeText)) { this.getWifiSSID(qrCodeText) } else { qrCodeText; }
 
-        this.openLinkRow.visibility = if(this.isHyperlink(qrCodeText)) { View.VISIBLE; } else { View.GONE; }
+        this.connectWifiRow.visibility = if(isWifiAccessKey) { View.VISIBLE } else { View.GONE };
+        this.openLinkRow.visibility = if(isHyperlink) { View.VISIBLE; } else { View.GONE; }
     }
 
     /**
@@ -165,27 +166,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    /**
-     * Returns whether the camera-access-permission was granted by the user
-     */
-    private fun hasCameraPermission() : Boolean {
-        return this.permissionHandler!!.hasPermission(android.Manifest.permission.CAMERA);
-    }
-
-    /**
-     * Requests the camera-access-permission from the user
-     */
-    private fun requestCameraPermission() {
-        this.permissionHandler!!.requestPermissions(arrayOf(android.Manifest.permission.CAMERA));
-    }
-
     /**
      * Returns whether the given text is a valid URL
      * @param text text to be checked
      */
     private fun isHyperlink(text: String) : Boolean {
-        return text.matches(Regex("^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#@!\\$&'\\(\\)\\*\\+,;=.]+$"));
+        return text.matches(Regex(MainActivity.HYPERLINK_PATTERN));
+    }
+
+    /**
+     * Returns whether the given text is a valid wifi access key
+     * @param text text to be checked
+     */
+    private fun isWifiAccessKey(text: String) : Boolean {
+        return text.matches(Regex(MainActivity.WIFI_PATTERN));
+    }
+
+    /**
+     * Returns the regex-matches for the given access-key with the pattern MainActivity.WIFI_PATTERN
+     * @param accessKey access-key to extract the matches from
+     */
+    private fun getWifiMatches(accessKey: String) : MatchResult? {
+        return Regex(MainActivity.WIFI_PATTERN).find(accessKey)
+    }
+
+    /**
+     * Gets the wifi's ssid from the given wifi-access-key
+     * @param accessKey access-key to extract the ssid from
+     */
+    private fun getWifiSSID(accessKey: String) : String {
+        val match = this.getWifiMatches(accessKey);
+        if(match != null && match!!.groups.size > 1 && match!!.groups[1] != null) {
+            return match!!.groups[1]!!.value;
+        }
+        return "<could not read ssid>";
     }
 
     /**

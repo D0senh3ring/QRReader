@@ -1,25 +1,19 @@
 package de.dosenhering.qrreader.dialogs
 
 import android.content.DialogInterface
-import de.dosenhering.qrreader.MainActivity
 import de.dosenhering.qrreader.permissions.PermissionHandler
-import de.dosenhering.qrreader.qrcodehandling.QRCodeResultHandler
 
-public class PermissionGrantOkListener : DialogInterface.OnClickListener {
+public open class PermissionGrantOkListener : DialogInterface.OnClickListener {
 
-    private val permissionHandler: PermissionHandler?;
-    private val resultHandler: QRCodeResultHandler;
+    protected val permissionHandler: PermissionHandler;
+    protected val permission : String;
 
-    public constructor(resultHandler: QRCodeResultHandler, permissionHandler: PermissionHandler) {
+    public constructor(permission: String, permissionHandler: PermissionHandler) {
         this.permissionHandler = permissionHandler;
-        this.resultHandler = resultHandler;
+        this.permission = permission;
     }
 
     override fun onClick(dialog: DialogInterface?, which: Int) {
-        if(MainActivity.isMarshmallowOrGreater()) {
-            this.permissionHandler!!.requestPermissions(arrayOf(android.Manifest.permission.CAMERA));
-            this.resultHandler.startCamera();
-        }
+        this.permissionHandler.requestPermissions(arrayOf(this.permission));
     }
-
 }

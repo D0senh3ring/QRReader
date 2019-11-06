@@ -2,14 +2,17 @@ package de.dosenhering.qrreader.dialogs
 
 import android.content.Context
 import android.content.DialogInterface
+import android.support.v7.app.AlertDialog
 import android.widget.Toast
 
 public class DialogBuilder {
 
-    private val context: Context;
+    private val mainActivityContext : Context;
+    private val appContext : Context;
 
-    constructor(context: Context) {
-        this.context = context;
+    constructor(appContext: Context, mainActivityContext: Context) {
+        this.mainActivityContext = mainActivityContext;
+        this.appContext = appContext;
     }
 
     /**
@@ -18,7 +21,7 @@ public class DialogBuilder {
      * @param okHandler Object that will handle the ok-button-click-event
      */
     public fun showOkCancelMessage(message: String, okHandler: DialogInterface.OnClickListener) {
-        android.support.v7.app.AlertDialog.Builder(this.context)
+        AlertDialog.Builder(this.mainActivityContext)
             .setMessage(message)
             .setPositiveButton("OK", okHandler)
             .setNegativeButton("Cancel", null)
@@ -32,7 +35,7 @@ public class DialogBuilder {
      * @param duration
      */
     public fun showAlert(message: String, duration: Int) {
-        Toast.makeText(this.context, message, duration).show();
+        Toast.makeText(this.appContext, message, duration).show();
     }
 
     /**

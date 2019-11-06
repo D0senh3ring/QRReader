@@ -3,7 +3,12 @@ package de.dosenhering.qrreader.qrcodehandling
 import android.app.Activity
 import android.content.*
 import android.net.Uri
+import android.net.wifi.WifiManager
+import de.dosenhering.qrreader.MainActivity
 import de.dosenhering.qrreader.dialogs.DialogBuilder
+import de.dosenhering.qrreader.net.WifiManagerHelper
+import de.dosenhering.qrreader.net.WifiSecurity
+import de.dosenhering.qrreader.permissions.PermissionHandler
 import java.net.URLEncoder
 
 public class QRCodeHandler {
@@ -18,7 +23,27 @@ public class QRCodeHandler {
         this.mainActivity = mainActivity;
     }
 
-    //TODO(Add Option to connect to WIFI)
+    public fun connectWifi(accessKey: String, permissionHandler: PermissionHandler) {
+        if(!permissionHandler.hasWifiPermissions()) {
+            permissionHandler.requestWifiPermissions();
+        }
+
+        if(permissionHandler.hasWifiPermissions()) {
+            val match = Regex(MainActivity.WIFI_PATTERN).find(accessKey);
+
+            val wifiManager : WifiManager = this.mainActivity.getSystemService(Context.WIFI_SERVICE) as WifiManager;
+
+            val ssid : String = match!!.groups[1]!!.value;
+            val pass : String = match!!.groups[3]!!.value;
+            val security : WifiSecurity = WifiSecurity.valueOf(match!!.groups[2]!!.value);
+
+            if(WifiManagerHelper(wifiManager).connectWIFI(ssid, pass, security)) {
+                this.dialogBuilder.showAlert("Connected to wifi \"$ssid\"");
+            } else {
+                this.dialogBuilder.showAlert("Could not connect to wifi \"$ssid\"");
+            }
+        }
+    }
 
     /**
      * Opens the devices default web browser with the given url

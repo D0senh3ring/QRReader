@@ -15,6 +15,9 @@ public class QRCodeResultHandler : ZXingScannerView.ResultHandler {
     private val dialogBuilder: DialogBuilder;
     private val mainActivity: MainActivity;
 
+    public var lastScanResult : String? = null
+        public get private set;
+
     public constructor(mainActivity: MainActivity, dialogBuilder: DialogBuilder) {
         this.scannerView = mainActivity.findViewById(R.id.scannerView);
         this.overlayRoot = mainActivity.findViewById(R.id.overlayRoot);
@@ -25,6 +28,7 @@ public class QRCodeResultHandler : ZXingScannerView.ResultHandler {
     override fun handleResult(result: Result?) {
         if(result != null) {
             this.mainActivity.triggerVibration(100);
+            this.lastScanResult = result.text;
 
             if(this.overlayRoot == null) {
                 this.dialogBuilder.showAlert("Could not instantiate overlay.");
@@ -34,6 +38,13 @@ public class QRCodeResultHandler : ZXingScannerView.ResultHandler {
                 this.mainActivity.showOverlay(result.text);
             }
         }
+    }
+
+    /**
+     * Clears the value from QRCodeResultHandler.lastScanResult
+     */
+    public fun clearLastScanResult() {
+        this.lastScanResult = null;
     }
 
     /**

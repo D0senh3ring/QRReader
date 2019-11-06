@@ -78,6 +78,15 @@
                                 android:layout_height="wrap_content"/>
                     </TableRow>
 
+                    <TableRow android:id="@+id/connectWifiRow">
+                        <Button android:text="Connect to Wifi"
+                                android:layout_span="3"
+                                android:onClick="onConnectWifiClick"
+                                android:paddingVertical="5dp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"/>
+                    </TableRow>
+
                     <TableRow>
                         <Button android:text="Dismiss"
                                 android:layout_span="3"
