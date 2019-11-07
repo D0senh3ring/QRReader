@@ -1,6 +1,7 @@
 package de.dosenhering.qrreader
 
 import android.content.*
+import android.databinding.DataBindingUtil
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -8,8 +9,8 @@ import android.os.Vibrator
 import android.view.View
 import android.widget.RelativeLayout
 import android.widget.TextView
+import de.dosenhering.qrreader.databinding.ActivityMainBinding
 import de.dosenhering.qrreader.dialogs.DialogBuilder
-import de.dosenhering.qrreader.dialogs.PermissionGrantOkListener
 import de.dosenhering.qrreader.permissions.PermissionHandler
 import de.dosenhering.qrreader.qrcodehandling.QRCodeHandler
 import de.dosenhering.qrreader.qrcodehandling.QRCodeResultHandler
@@ -20,49 +21,30 @@ class MainActivity : AppCompatActivity() {
     companion object {
         public const val HYPERLINK_PATTERN : String = "^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#@!\\$&'\\(\\)\\*\\+,;=.]+$";
         public const val WIFI_PATTERN : String = "^WIFI:S:(.*?);T:(\\w+)?;P:([\\w\\W]+)?;(\\w+)?;$";
-
-        /**
-         * Checks if the currently installed API-Level is greater or equal to 23 (Marshmallow - 6.0)
-         */
-        public fun isMarshmallowOrGreater() : Boolean {
-            return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M;
-        }
-
-        /**
-         * Checks if the currently installed API-Level is greater or equal to 26 (Oreo - 8.0)
-         */
-        public fun isOreoOrGreater() : Boolean {
-            return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O;
-        }
     }
 
-    private var overlayRoot: RelativeLayout? = null;
-    private var qrCodeText: TextView? = null;
+    private lateinit var binding : ActivityMainBinding;
 
     private var qrCodeResultHandler: QRCodeResultHandler? = null;
     private var permissionHandler: PermissionHandler? = null;
     private var dialogBuilder: DialogBuilder? = null;
     private var qrCodeHandler: QRCodeHandler? = null;
 
-    private var lastScanText: String? = null;
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        this.overlayRoot = this.findViewById(R.id.overlayRoot);
-        this.qrCodeText = this.findViewById(R.id.qrCodeText);
+        this.binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
         this.permissionHandler = PermissionHandler(this, 1001);
         this.dialogBuilder = DialogBuilder(this.applicationContext, this);
         this.qrCodeHandler = QRCodeHandler(this, this.dialogBuilder!!);
-        this.qrCodeResultHandler = QRCodeResultHandler(this, this.dialogBuilder!!);
+        this.qrCodeResultHandler = QRCodeResultHandler(this, this.binding.scannerView, this.dialogBuilder!!);
 
-        this.qrCodeResultHandler!!.startCamera();
-
-        if(MainActivity.isMarshmallowOrGreater() && !this.permissionHandler!!.hasCameraPermission()) {
+        if(!this.permissionHandler!!.hasCameraPermission()) {
             this.permissionHandler!!.requestCameraPermission();
         }
+        this.qrCodeResultHandler!!.startCamera();
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -100,34 +82,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     public fun onOpenLinkClicked(view: View) {
-        this.qrCodeHandler!!.openInDefaultBrowser(this.qrCodeResultHandler!!.lastScanResult!!);
+        this.qrCodeHandler!!.openInDefaultBrowser(this.binding.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onCopyClicked(view: View) {
-        this.qrCodeHandler!!.copyToClipboard(this.qrCodeResultHandler!!.lastScanResult!!);
+        this.qrCodeHandler!!.copyToClipboard(this.binding.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onShareClicked(view: View) {
-        this.qrCodeHandler!!.shareWithOtherApps(this.qrCodeResultHandler!!.lastScanResult!!);
+        this.qrCodeHandler!!.shareWithOtherApps(this.binding.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onSearchClicked(view: View) {
-        this.qrCodeHandler!!.searchInDefaultBrowser(this.qrCodeResultHandler!!.lastScanResult!!);
+        this.qrCodeHandler!!.searchInDefaultBrowser(this.binding.lastScanResult!!);
         this.onDismissClicked(view);
     }
 
     public fun onConnectWifiClick(view: View) {
-        this.qrCodeHandler!!.connectWifi(this.qrCodeResultHandler!!.lastScanResult!!, this.permissionHandler!!);
+        this.qrCodeHandler!!.connectWifi(this.binding.lastScanResult!!, this.permissionHandler!!);
         this.onDismissClicked(view);
     }
 
-    public fun onDismissClicked(view: View) {
+    public fun onDismissClicked(@Suppress("UNUSED_PARAMETER") view: View) {
         this.hideOverlay();
         this.qrCodeResultHandler!!.resumeCamera();
-        this.lastScanText = null;
+        this.binding.lastScanResult = "";
     }
 
 
@@ -138,32 +120,30 @@ class MainActivity : AppCompatActivity() {
     public fun showOverlay(qrCodeText: String) {
         val isWifiAccessKey : Boolean = this.isWifiAccessKey(qrCodeText);
         val isHyperlink : Boolean = this.isHyperlink(qrCodeText);
+        val wifiSSID : String = this.getWifiSSID(qrCodeText);
 
-        this.overlayRoot!!.visibility = View.VISIBLE;
-        this.overlayRoot!!.bringToFront();
-
-        this.qrCodeText?.text = if(this.isWifiAccessKey(qrCodeText)) { this.getWifiSSID(qrCodeText) } else { qrCodeText; }
-
-        this.connectWifiRow.visibility = if(isWifiAccessKey) { View.VISIBLE } else { View.GONE };
-        this.openLinkRow.visibility = if(isHyperlink) { View.VISIBLE; } else { View.GONE; }
-    }
-
-    /**
-     * Hides the overlay-panel
-     */
-    public fun hideOverlay() {
-        this.overlayRoot!!.visibility = View.GONE;
+        this.binding.apply {
+            this.overlayVisibility = true;
+            this.scanDisplayText = if(isWifiAccessKey) { wifiSSID } else { qrCodeText; }
+            this.lastScanResult = qrCodeText;
+            this.connectWifiVisibility = isWifiAccessKey;
+            this.openLinkVisibility = isHyperlink;
+        }
     }
 
     /**
      * Triggers a device-vibration for the specified amount of time in milliseconds
      */
     public fun triggerVibration(duration: Long) {
-        if(MainActivity.isOreoOrGreater()) {
-            (this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
-        } else {
-            (this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(duration);
-        }
+        (this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+    }
+
+
+    /**
+     * Hides the overlay-panel
+     */
+    private fun hideOverlay() {
+        this.binding.overlayVisibility = false;
     }
 
     /**
@@ -196,8 +176,8 @@ class MainActivity : AppCompatActivity() {
      */
     private fun getWifiSSID(accessKey: String) : String {
         val match = this.getWifiMatches(accessKey);
-        if(match != null && match!!.groups.size > 1 && match!!.groups[1] != null) {
-            return match!!.groups[1]!!.value;
+        if(match != null && match.groups.size > 1 && match.groups[1] != null) {
+            return match.groups[1]!!.value;
         }
         return "<could not read ssid>";
     }
@@ -206,6 +186,6 @@ class MainActivity : AppCompatActivity() {
      * Returns whether the overly-panel is visible
      */
     private fun isOverlayVisible() : Boolean {
-        return this.overlayRoot!!.visibility == View.VISIBLE;
+        return this.binding.overlayVisibility!!;
     }
 }

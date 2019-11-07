@@ -80,7 +80,7 @@ public class PermissionHandler {
             for(index in permissions.indices) {
                 if (grantResults[index] == PackageManager.PERMISSION_GRANTED) {
                     when(permissions[index]) {
-                        android.Manifest.permission.CAMERA -> dialogBuilder!!.showAlert("Camera access was successfully granted.");
+                        android.Manifest.permission.CAMERA -> dialogBuilder.showAlert("Camera access was successfully granted.");
                         android.Manifest.permission.CHANGE_WIFI_STATE -> dialogBuilder.showAlert("Change permission to Wifi-state successfully granted");
                         android.Manifest.permission.ACCESS_WIFI_STATE -> dialogBuilder.showAlert("Read permission to Wifi-state successfully granted");
                     }

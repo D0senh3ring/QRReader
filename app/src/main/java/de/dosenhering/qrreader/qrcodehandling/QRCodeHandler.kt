@@ -33,14 +33,18 @@ public class QRCodeHandler {
 
             val wifiManager : WifiManager = this.mainActivity.getSystemService(Context.WIFI_SERVICE) as WifiManager;
 
-            val ssid : String = match!!.groups[1]!!.value;
-            val pass : String = match!!.groups[3]!!.value;
-            val security : WifiSecurity = WifiSecurity.valueOf(match!!.groups[2]!!.value);
+            if(match != null && match.groups.size > 3) {
+                val ssid : String = match.groups[1]!!.value;
+                val pass : String = match.groups[3]!!.value;
+                val security : WifiSecurity = WifiSecurity.valueOf(match.groups[2]!!.value);
 
-            if(WifiManagerHelper(wifiManager).connectWIFI(ssid, pass, security)) {
-                this.dialogBuilder.showAlert("Connected to wifi \"$ssid\"");
+                if(WifiManagerHelper(wifiManager).connectWIFI(ssid, pass, security)) {
+                    this.dialogBuilder.showAlert("Connected to wifi \"$ssid\"");
+                } else {
+                    this.dialogBuilder.showAlert("Could not connect to wifi \"$ssid\"");
+                }
             } else {
-                this.dialogBuilder.showAlert("Could not connect to wifi \"$ssid\"");
+                this.dialogBuilder.showAlert("Could not read wifi data");
             }
         }
     }
@@ -53,7 +57,7 @@ public class QRCodeHandler {
         try {
             this.mainActivity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (ex: ActivityNotFoundException) {
-            this.dialogBuilder!!.showAlert("Your default browser could not be located.");
+            this.dialogBuilder.showAlert("Your default browser could not be located.");
         }
     }
 
@@ -77,7 +81,7 @@ public class QRCodeHandler {
         try {
             this.mainActivity.startActivity(Intent.createChooser(share, "Share content"));
         } catch (ex: ActivityNotFoundException) {
-            this.dialogBuilder!!.showAlert("Share-picker could not be opened.");
+            this.dialogBuilder.showAlert("Share-picker could not be opened.");
         }
     }
 
@@ -86,8 +90,7 @@ public class QRCodeHandler {
      * @param text text to be copied
      */
     public fun copyToClipboard(text: CharSequence) {
-        val clipboard = this.mainActivity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager;
-        clipboard.primaryClip = ClipData.newPlainText(text, text);
-        this.dialogBuilder!!.showAlert("Copied to clipboard");
+        (this.mainActivity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip = ClipData.newPlainText(text, text);
+        this.dialogBuilder.showAlert("Copied to clipboard");
     }
 }

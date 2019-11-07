@@ -1,71 +1,48 @@
 package de.dosenhering.qrreader.qrcodehandling
 
-import android.util.Log
-import android.widget.RelativeLayout
 import com.google.zxing.Result
 import de.dosenhering.qrreader.MainActivity
-import de.dosenhering.qrreader.R
 import de.dosenhering.qrreader.dialogs.DialogBuilder
 import me.dm7.barcodescanner.zxing.ZXingScannerView
 
 public class QRCodeResultHandler : ZXingScannerView.ResultHandler {
 
     private val scannerView: ZXingScannerView;
-    private val overlayRoot:  RelativeLayout;
     private val dialogBuilder: DialogBuilder;
     private val mainActivity: MainActivity;
 
-    public var lastScanResult : String? = null
-        public get private set;
-
-    public constructor(mainActivity: MainActivity, dialogBuilder: DialogBuilder) {
-        this.scannerView = mainActivity.findViewById(R.id.scannerView);
-        this.overlayRoot = mainActivity.findViewById(R.id.overlayRoot);
+    public constructor(mainActivity: MainActivity, scannerView: ZXingScannerView, dialogBuilder: DialogBuilder) {
         this.dialogBuilder = dialogBuilder;
         this.mainActivity = mainActivity;
+        this.scannerView = scannerView;
     }
 
     override fun handleResult(result: Result?) {
         if(result != null) {
             this.mainActivity.triggerVibration(100);
-            this.lastScanResult = result.text;
-
-            if(this.overlayRoot == null) {
-                this.dialogBuilder.showAlert("Could not instantiate overlay.");
-                this.resumeCamera();
-            } else {
-                Log.d("QRReader", result.barcodeFormat.toString());
-                this.mainActivity.showOverlay(result.text);
-            }
+            this.mainActivity.showOverlay(result.text);
         }
-    }
-
-    /**
-     * Clears the value from QRCodeResultHandler.lastScanResult
-     */
-    public fun clearLastScanResult() {
-        this.lastScanResult = null;
     }
 
     /**
      * Stops the execution of the camera preview
      */
     public fun stopCamera() {
-        this.scannerView!!.stopCamera();
+        this.scannerView.stopCamera();
     }
 
     /**
      * Starts the execution of the camera preview
      */
     public fun startCamera() {
-        this.scannerView!!.setResultHandler(this);
-        this.scannerView!!.startCamera();
+        this.scannerView.setResultHandler(this);
+        this.scannerView.startCamera();
     }
 
     /**
      * Resumes the execution of the camera preview
      */
     public fun resumeCamera() {
-        this.scannerView!!.resumeCameraPreview(this);
+        this.scannerView.resumeCameraPreview(this);
     }
 }
