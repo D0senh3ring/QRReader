@@ -8,3 +8,4 @@ Read QRCodes and:
   - share the content with another app
   - search for the content on the internet
   - if the content is a hyperlink, open it in your default browser
+  - ifthe content is a wifi acces-key, connect your phone to the wireless network

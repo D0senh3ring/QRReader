@@ -7,14 +7,11 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.View
-import android.widget.RelativeLayout
-import android.widget.TextView
 import de.dosenhering.qrreader.databinding.ActivityMainBinding
 import de.dosenhering.qrreader.dialogs.DialogBuilder
 import de.dosenhering.qrreader.permissions.PermissionHandler
 import de.dosenhering.qrreader.qrcodehandling.QRCodeHandler
 import de.dosenhering.qrreader.qrcodehandling.QRCodeResultHandler
-import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 

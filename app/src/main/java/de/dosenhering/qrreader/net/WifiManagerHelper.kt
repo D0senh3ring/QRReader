@@ -19,6 +19,7 @@ public class WifiManagerHelper {
         when(security) {
             WifiSecurity.WEP -> this.setWEPSecurity(config, password);
             WifiSecurity.WPA -> this.setWPASecurity(config, password);
+            WifiSecurity.WPA2 -> this.setWPASecurity(config, password);
             WifiSecurity.OPEN -> this.setOpenWifiConfig(config);
             else -> throw NotImplementedError("Unknown Wifi-security-type: $security");
         }
